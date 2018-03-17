@@ -274,21 +274,21 @@ def get_punchcard_data(findings, weeks_between, start_date):
         append_tick = True
         days = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
         for finding in findings:
-	    try:
-		    if new_date < datetime.combine(finding.date, datetime.min.time()).replace(tzinfo=timezone.get_current_timezone()) <= end_date:
-			# [0,0,(20*.02)]
-			# [week, day, weight]
-			days[day_offset[finding.date.weekday()]] += 1
-			if days[day_offset[finding.date.weekday()]] > highest_count:
-			    highest_count = days[day_offset[finding.date.weekday()]]
-	    except:
-		if new_date < finding.date <= end_date:
-			# [0,0,(20*.02)]
-			# [week, day, weight]
-			days[day_offset[finding.date.weekday()]] += 1
-			if days[day_offset[finding.date.weekday()]] > highest_count:
-			    highest_count = days[day_offset[finding.date.weekday()]]
-		pass
+            try:
+                if new_date < datetime.combine(finding.date, datetime.min.time()).replace(tzinfo=timezone.get_current_timezone()) <= end_date:
+                # [0,0,(20*.02)]
+                # [week, day, weight]
+                    days[day_offset[finding.date.weekday()]] += 1
+                    if days[day_offset[finding.date.weekday()]] > highest_count:
+                        highest_count = days[day_offset[finding.date.weekday()]]
+            except:
+                if new_date < finding.date <= end_date:
+                    # [0,0,(20*.02)]
+                    # [week, day, weight]
+                    days[day_offset[finding.date.weekday()]] += 1
+                    if days[day_offset[finding.date.weekday()]] > highest_count:
+                        highest_count = days[day_offset[finding.date.weekday()]]
+                pass
 
         if sum(days.values()) > 0:
             for day, count in days.items():
@@ -464,27 +464,27 @@ def get_period_counts(active_findings, findings, findings_closed, accepted_findi
         crit_count, high_count, med_count, low_count, closed_count = [0, 0, 0, 0, 0]
         for finding in active_findings:
             try:
-		    if datetime.combine(finding.date, datetime.min.time()).replace(tzinfo=timezone.get_current_timezone()) <= end_date:
-			if finding.severity == 'Critical':
-			    crit_count += 1
-			elif finding.severity == 'High':
-			    high_count += 1
-			elif finding.severity == 'Medium':
-			    med_count += 1
-			elif finding.severity == 'Low':
-			    low_count += 1
-	    except:
-		if finding.date <= end_date:
-			if finding.severity == 'Critical':
-			    crit_count += 1
-			elif finding.severity == 'High':
-			    high_count += 1
-			elif finding.severity == 'Medium':
-			    med_count += 1
-			elif finding.severity == 'Low':
-			    low_count += 1
-		pass
-        total = crit_count + high_count + med_count + low_count
+                if datetime.combine(finding.date, datetime.min.time()).replace(tzinfo=timezone.get_current_timezone()) <= end_date:
+                    if finding.severity == 'Critical':
+                        crit_count += 1
+                    elif finding.severity == 'High':
+                        high_count += 1
+                    elif finding.severity == 'Medium':
+                        med_count += 1
+                    elif finding.severity == 'Low':
+                        low_count += 1
+            except:
+                if finding.date <= end_date:
+                    if finding.severity == 'Critical':
+                        crit_count += 1
+                    elif finding.severity == 'High':
+                        high_count += 1
+                    elif finding.severity == 'Medium':
+                        med_count += 1
+                    elif finding.severity == 'Low':
+                        low_count += 1
+                pass
+            total = crit_count + high_count + med_count + low_count
         active_in_period.append(
             [(tcalendar.timegm(new_date.timetuple()) * 1000), new_date, crit_count, high_count, med_count, low_count,
              total])
