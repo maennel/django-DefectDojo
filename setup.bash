@@ -136,7 +136,7 @@ BREW_CMD=$(which brew)
 if [[ ! -z "$YUM_CMD" ]]; then
     curl -sL https://rpm.nodesource.com/setup | sudo bash -
     wget https://dl.yarnpkg.com/rpm/yarn.repo -O /etc/yum.repos.d/yarn.repo
-	sudo yum install gcc python-devel python-setuptools python-pip nodejs yarn wkhtmltopdf npm
+	sudo yum install gcc python3-devel python3-setuptools python3-pip nodejs yarn wkhtmltopdf npm
 
         if [ "$DBTYPE" == $MYSQL ]; then
            echo "Installing MySQL client"
@@ -160,9 +160,9 @@ elif [[ ! -z "$APT_GET_CMD" ]]; then
      echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
      #Node
      curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash
-     sudo apt-get update && sudo apt-get install -y apt-transport-https libjpeg-dev gcc libssl-dev python-dev python-pip nodejs yarn wkhtmltopdf build-essential
+     sudo apt-get update && sudo apt-get install -y apt-transport-https libjpeg-dev gcc libssl-dev python3-dev python3-pip nodejs yarn wkhtmltopdf build-essential
 elif [[ ! -z "$BREW_CMD" ]]; then
-    brew install gcc openssl python node npm yarn Caskroom/cask/wkhtmltopdf
+    brew install gcc openssl python3     node npm yarn Caskroom/cask/wkhtmltopdf
     if [ "$DBTYPE" == $MYSQL ]; then
         echo "Installing MySQL client"
         brew install mysql
@@ -237,8 +237,9 @@ fi
 
 # Detect Python version
 PYV=`python -c "import sys;t='{v[0]}.{v[1]}'.format(v=list(sys.version_info[:2]));sys.stdout.write(t)";`
+echo "$PYV"
 if [[ "$PYV"<"2.7" ]]; then
-    echo "ERROR: DefectDojo requires Python 2.7+"
+    echo "ERROR: DefectDojo requires at least Python 2.7+"
     exit 1;
 else
     echo "Leaving Django 1.8.10 requirement"

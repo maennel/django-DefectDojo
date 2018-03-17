@@ -51,6 +51,9 @@ sh -e /etc/init.d/xvfb start
 sleep 3 # give xvfb some time to start
 whereis chromedriver
 export PATH=$PATH:/usr/local/bin/
-python tests/check_status.py -v && python tests/smoke_test.py #&& python tests/zap.py
+
+python tests/check_status.py -v
+python tests/smoke_test.py
+# python tests/zap.py
 
 set +ex
