@@ -37,7 +37,6 @@ setup(
         'pytz>=2013.9',
         'requests>=2.2.1',
         'sqlalchemy',  # Required by Celery broker transport
-        'supervisor',
         'vobject',
         'html2text',
         'django-watson',
@@ -57,7 +56,7 @@ setup(
         'psycopg2',
         'django-multiselectfield',
         'pbr',
-	'django-slack',
+	    'django-slack',
     ],
 
     dependency_links=[
