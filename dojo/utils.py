@@ -1058,7 +1058,7 @@ def create_notification(event=None, **kwargs):
                             url='https://%s/v2/room/%s/notification?auth_token=%s' % (get_system_setting('hipchat_site'), channel, get_system_setting('hipchat_token')),
                             data={'message':create_notification_message(event, 'slack'),
                                   'message_format':'text'})
-            print res
+            print(res)
         except Exception as e:
             log_alert(e)
             pass

@@ -60,9 +60,9 @@ Here is a simple python example against the `/users` endpoint: ::
     r = requests.get(url, headers=headers, verify=True) # set verify to False if ssl cert is self-signed
 
     for key, value in r.__dict__.iteritems():
-      print key
-      print value
-      print '------------------'
+      print(key)
+      print(value)
+      print('------------------')
 
 This code will return all users defined in DefectDojo.
 
@@ -77,9 +77,9 @@ whose user name includes `jay`: ::
     r = requests.get(url, headers=headers, verify=True) # set verify to False if ssl cert is self-signed
 
     for key, value in r.__dict__.iteritems():
-      print key
-      print value
-      print '------------------'
+      print(key)
+      print(value)
+      print('------------------')
 
 The json object result is: ::
 

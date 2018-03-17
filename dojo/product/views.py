@@ -470,7 +470,7 @@ def new_eng_for_app(request, pid):
                         pass
 
             #else:
-            #    print >>sys.stderr, 'no prefix is found'
+            #    print() >>sys.stderr, 'no prefix is found'
 
             messages.add_message(request,
                                  messages.SUCCESS,

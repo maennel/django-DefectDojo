@@ -246,7 +246,7 @@ else
 fi
 
 # Detect if we're in a a virtualenv
-if python -c 'import sys; print sys.real_prefix' 2>/dev/null; then
+if python -c 'import sys; print(sys.real_prefix)' 2>/dev/null; then
     pip install .
     python manage.py makemigrations dojo
     python manage.py makemigrations --merge --noinput

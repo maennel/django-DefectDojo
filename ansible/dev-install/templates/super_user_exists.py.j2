@@ -11,4 +11,4 @@ if __name__ == '__main__':
     from django.contrib.auth.models import User
 
     if User.objects.filter(username='{{ dojo_admin }}').exists():
-      print "Admin user exists"
+      print("Admin user exists")
