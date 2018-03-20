@@ -32,7 +32,7 @@ setup(
         'pdfkit==0.6.1',
         'Pillow',
         'psycopg2',
-        'pycrypto',
+        'pycryptodome',
         'python-nmap>=0.3.4',
         'pytz>=2013.9',
         'requests>=2.2.1',
@@ -52,12 +52,11 @@ setup(
         'django-custom-field',
         'django-imagekit',
         'jira',
-        'pycrypto',
         'lxml',
         'psycopg2',
         'django-multiselectfield',
         'pbr',
-	'django-slack',
+	    'django-slack',
     ],
 
     dependency_links=[

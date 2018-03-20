@@ -24,7 +24,7 @@ django-tagging
 django-custom-field
 django-imagekit
 jira
-pycrypto
+pycryptodome
 lxml
 psycopg2
 django-multiselectfield
