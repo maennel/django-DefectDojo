@@ -5,7 +5,14 @@
 import argparse
 import csv
 from dojo.models import Finding, Endpoint
-from urlparse import urlparse
+
+from six import PY2, PY3
+
+if PY2:
+    from urlparse import urlparse
+if PY3:
+    from urllib.parse import urlparse
+
 ################################################################
 
 # Non-standard libraries

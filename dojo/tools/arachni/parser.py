@@ -3,7 +3,13 @@ from __future__ import with_statement
 import json
 import re
 from base64 import b64encode
-from urlparse import urlparse
+
+from six import PY2, PY3
+
+if PY2:
+    from urlparse import urlparse
+if PY3:
+    from urllib.parse import urlparse
 
 import html2text
 

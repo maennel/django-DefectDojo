@@ -7,7 +7,14 @@ import hashlib
 from dojo.models import Finding, Endpoint
 from dateutil.parser import parse
 import re
-from urlparse import urlparse
+
+from six import PY2, PY3
+
+if PY2:
+    from urlparse import urlparse
+if PY3:
+    from urllib.parse import urlparse
+
 import socket
 
 class ColumnMappingStrategy(object):

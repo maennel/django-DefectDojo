@@ -4,10 +4,14 @@ from datetime import datetime
 from xml.dom import NamespaceErr
 
 from defusedxml import ElementTree
+from six import PY2, PY3
 
 from dojo.models import Endpoint, Finding
 import html2text
-import urlparse
+if PY2:
+    import urlparse
+if PY3:
+    from urllib import parse as urlparse
 
 __author__ = "Jay Paz"
 

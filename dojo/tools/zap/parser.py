@@ -9,7 +9,13 @@ See the file 'doc/LICENSE' for the license information
 """
 import re
 import socket
-import urlparse
+
+from six import PY2, PY3
+
+if PY2:
+    import urlparse
+if PY3:
+    from urllib import parse as urlparse
 from defusedxml import ElementTree as ET
 from django.utils.html import strip_tags
 from dojo.models import Finding, Endpoint
