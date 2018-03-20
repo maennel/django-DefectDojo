@@ -1,6 +1,12 @@
 import re
 from datetime import datetime, date
-from urlparse import urlsplit, urlunsplit
+
+from six import PY2, PY3
+
+if PY2:
+    from urlparse import urlsplit, urlunsplit
+if PY3:
+    from urllib.parse import urlsplit, urlunsplit
 
 from custom_field.models import CustomField
 from dateutil.relativedelta import relativedelta
