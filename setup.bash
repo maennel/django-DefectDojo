@@ -198,7 +198,7 @@ if [ "$AUTO_DOCKER" == "yes" ]; then
     # locate to the install directory first
     cd /opt/django-DefectDojo/
 fi
-cp dojo/settings/settings.dist.py dojo/settings/settings.py
+cp dojo/settings/settings_dist.py dojo/settings/settings.py
 
 # Save MySQL details in settings file
 if [[ ! -z $BREW_CMD ]]; then
@@ -248,8 +248,6 @@ fi
 # Detect if we're in a a virtualenv
 if python -c 'import sys; print(sys.real_prefix)' 2>/dev/null; then
     pip install .
-    python manage.py makemigrations dojo
-    python manage.py makemigrations --merge --noinput
     python manage.py migrate
     echo -e "${GREEN}${BOLD}Create Dojo superuser:"
     tput sgr0
@@ -262,8 +260,6 @@ if python -c 'import sys; print(sys.real_prefix)' 2>/dev/null; then
     python manage.py buildwatson
 else
     pip install .
-    python manage.py makemigrations dojo
-    python manage.py makemigrations --merge --noinput
     python manage.py migrate
     # Allow script to be called non-interactively using:
     # export AUTO_DOCKER=yes && /opt/django-DefectDojo/setup.bash

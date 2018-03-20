@@ -31,8 +31,6 @@ setupdb() {
   echo "=============================================================================="
   echo
   cd /django-DefectDojo/
-  python manage.py makemigrations dojo
-  python manage.py makemigrations
   python manage.py migrate
   python manage.py syncdb --noinput
   python manage.py loaddata product_type
@@ -110,7 +108,7 @@ setupdojo() {
   echo "=============================================================================="
   echo
   #Copying setting.py temporarily so that collect static will run correctly
-  cp /django-DefectDojo/dojo/settings/settings.dist.py /django-DefectDojo/dojo/settings/settings.py
+  cp /django-DefectDojo/dojo/settings/settings_dist.py /django-DefectDojo/dojo/settings/settings.py
   sed -i  "s#DOJO_STATIC_ROOT#$PWD/static/#g" /django-DefectDojo/dojo/settings/settings.py
 
   echo "Setting dojo settings for SQLLITEDB."
