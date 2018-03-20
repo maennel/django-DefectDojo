@@ -1,34 +1,37 @@
 # #  engagements
 import logging
+import operator
 import os
 from datetime import datetime, timedelta
-import operator
 
-from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.http import HttpResponseRedirect, StreamingHttpResponse, Http404, HttpResponse
+from django.http import HttpResponseRedirect, StreamingHttpResponse, Http404, \
+    HttpResponse
 from django.shortcuts import render, get_object_or_404
-from django.views.decorators.cache import cache_page
 from django.utils import timezone
+from django.views.decorators.cache import cache_page
 
 from dojo.filters import EngagementFilter
 from dojo.forms import CheckForm, \
     UploadThreatForm, UploadRiskForm, NoteForm, DoneForm, \
-    EngForm2, TestForm, ReplaceRiskAcceptanceForm, AddFindingsRiskAcceptanceForm, DeleteEngagementForm, ImportScanForm, \
+    EngForm2, TestForm, ReplaceRiskAcceptanceForm, \
+    AddFindingsRiskAcceptanceForm, DeleteEngagementForm, ImportScanForm, \
     JIRAFindingForm, CredMappingForm
 from dojo.models import Finding, Product, Engagement, Test, \
     Check_List, Test_Type, Notes, \
     Risk_Acceptance, Development_Environment, BurpRawRequestResponse, Endpoint, \
-    JIRA_PKey, JIRA_Conf, JIRA_Issue, Cred_User, Cred_Mapping, Notifications, Dojo_User
+    JIRA_PKey, JIRA_Issue, Cred_Mapping, Dojo_User
+from dojo.tasks import update_epic_task, add_epic_task, close_epic_task
 from dojo.tools.factory import import_parser_factory
 from dojo.utils import get_page_items, add_breadcrumb, handle_uploaded_threat, \
-    FileIterWrapper, get_cal_event, message, get_system_setting, create_notification
-from dojo.tasks import update_epic_task, add_epic_task, close_epic_task
+    FileIterWrapper, get_cal_event, message, get_system_setting, \
+    create_notification
 
 logger = logging.getLogger(__name__)
 
@@ -40,14 +43,15 @@ def engagement_calendar(request):
         engagements = Engagement.objects.all()
     else:
         filters = []
-        leads = request.GET.getlist('lead','')
+        leads = request.GET.getlist('lead', '')
         if '-1' in request.GET.getlist('lead'):
             leads.remove('-1')
             filters.append(Q(lead__isnull=True))
         filters.append(Q(lead__in=leads))
         engagements = Engagement.objects.filter(reduce(operator.or_, filters))
 
-    add_breadcrumb(title="Engagement Calendar", top_level=True, request=request)
+    add_breadcrumb(title="Engagement Calendar", top_level=True,
+                   request=request)
     return render(request, 'dojo/calendar.html', {
         'caltype': 'engagements',
         'leads': request.GET.getlist('lead', ''),
@@ -71,7 +75,8 @@ def engagement(request):
                      engagement__active=True, ).distinct()
                  for engagement in product.engagement_set.all()]
 
-    add_breadcrumb(title="Active Engagements", top_level=not len(request.GET), request=request)
+    add_breadcrumb(title="Active Engagements", top_level=not len(request.GET),
+                   request=request)
 
     return render(request, 'dojo/engagement.html',
                   {'products': prods,
@@ -97,9 +102,11 @@ def new_engagement(request):
                                  'Engagement added successfully.',
                                  extra_tags='alert-success')
             if "_Add Tests" in request.POST:
-                return HttpResponseRedirect(reverse('add_tests', args=(new_eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('add_tests', args=(new_eng.id,)))
             else:
-                return HttpResponseRedirect(reverse('view_engagement', args=(new_eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('view_engagement', args=(new_eng.id,)))
     else:
         form = EngForm2()
 
@@ -116,16 +123,19 @@ def edit_engagement(request, eid):
     if request.method == 'POST':
         form = EngForm2(request.POST, instance=eng)
         if 'jiraform-push_to_jira' in request.POST:
-            jform = JIRAFindingForm(request.POST, prefix='jiraform', enabled=True)
+            jform = JIRAFindingForm(request.POST, prefix='jiraform',
+                                    enabled=True)
         if form.is_valid():
             if 'jiraform-push_to_jira' in request.POST:
                 try:
                     jissue = JIRA_Issue.objects.get(engagement=eng)
-                    update_epic_task.delay(eng, jform.cleaned_data.get('push_to_jira'))
+                    update_epic_task.delay(eng, jform.cleaned_data.get(
+                        'push_to_jira'))
                     enabled = True
                 except:
                     enabled = False
-                    add_epic_task.delay(eng, jform.cleaned_data.get('push_to_jira'))
+                    add_epic_task.delay(eng,
+                                        jform.cleaned_data.get('push_to_jira'))
                     pass
             form.save()
             tags = request.POST.getlist('tags')
@@ -136,9 +146,11 @@ def edit_engagement(request, eid):
                                  'Engagement updated successfully.',
                                  extra_tags='alert-success')
             if '_Add Tests' in request.POST:
-                return HttpResponseRedirect(reverse('add_tests', args=(eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('add_tests', args=(eng.id,)))
             else:
-                return HttpResponseRedirect(reverse('view_engagement', args=(eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('view_engagement', args=(eng.id,)))
     else:
         form = EngForm2(instance=eng)
         try:
@@ -148,13 +160,15 @@ def edit_engagement(request, eid):
             enabled = False
             pass
 
-        if get_system_setting('enable_jira') and JIRA_PKey.objects.filter(product=eng.product).count() != 0:
+        if get_system_setting('enable_jira') and JIRA_PKey.objects.filter(
+                product=eng.product).count() != 0:
             jform = JIRAFindingForm(prefix='jiraform', enabled=enabled)
         else:
             jform = None
 
     form.initial['tags'] = [tag.name for tag in eng.tags]
-    add_breadcrumb(parent=eng, title="Edit Engagement", top_level=False, request=request)
+    add_breadcrumb(parent=eng, title="Edit Engagement", top_level=False,
+                   request=request)
     return render(request, 'dojo/new_eng.html',
                   {'form': form, 'edit': True, 'jform': jform
                    })
@@ -183,9 +197,11 @@ def delete_engagement(request, eid):
                                      messages.SUCCESS,
                                      'Engagement and relationships removed.',
                                      extra_tags='alert-success')
-                return HttpResponseRedirect(reverse('view_product', args=(product.id,)))
+                return HttpResponseRedirect(
+                    reverse('view_product', args=(product.id,)))
 
-    add_breadcrumb(parent=engagement, title="Delete", top_level=False, request=request)
+    add_breadcrumb(parent=engagement, title="Delete", top_level=False,
+                   request=request)
 
     return render(request, 'dojo/delete_engagement.html',
                   {'engagement': engagement,
@@ -229,14 +245,17 @@ def view_engagement(request, eid):
         eng.progress = 'check_list'
         eng.save()
 
-    creds = Cred_Mapping.objects.filter(product=eng.product).select_related('cred_id').order_by('cred_id')
-    cred_eng = Cred_Mapping.objects.filter(engagement=eng.id).select_related('cred_id').order_by('cred_id')
+    creds = Cred_Mapping.objects.filter(product=eng.product).select_related(
+        'cred_id').order_by('cred_id')
+    cred_eng = Cred_Mapping.objects.filter(engagement=eng.id).select_related(
+        'cred_id').order_by('cred_id')
 
     add_breadcrumb(parent=eng, top_level=False, request=request)
     if hasattr(settings, 'ENABLE_DEDUPLICATION'):
         if settings.ENABLE_DEDUPLICATION:
             enabled = True
-            findings = Finding.objects.filter(test__engagement=eng, duplicate=False)
+            findings = Finding.objects.filter(test__engagement=eng,
+                                              duplicate=False)
         else:
             enabled = False
             findings = None
@@ -252,42 +271,49 @@ def view_engagement(request, eid):
     # ----------
 
     try:
-        start_date = Finding.objects.filter(test__engagement__product=eng.product).order_by('date')[:1][0].date
+        start_date = \
+        Finding.objects.filter(test__engagement__product=eng.product).order_by(
+            'date')[:1][0].date
     except:
         start_date = timezone.now()
 
     end_date = timezone.now()
 
-    risk_acceptances = Risk_Acceptance.objects.filter(engagement__in=Engagement.objects.filter(product=eng.product))
+    risk_acceptances = Risk_Acceptance.objects.filter(
+        engagement__in=Engagement.objects.filter(product=eng.product))
 
     accepted_findings = [finding for ra in risk_acceptances
                          for finding in ra.accepted_findings.all()]
 
-    week_date = end_date - timedelta(days=7)  # seven days and /newer are considered "new"
+    week_date = end_date - timedelta(
+        days=7)  # seven days and /newer are considered "new"
 
-    new_verified_findings = Finding.objects.filter(test__engagement__product=eng.product,
-                                                   date__range=[week_date, end_date],
-                                                   false_p=False,
-                                                   verified=True,
-                                                   duplicate=False,
-                                                   out_of_scope=False).order_by("date")
+    new_verified_findings = Finding.objects.filter(
+        test__engagement__product=eng.product,
+        date__range=[week_date, end_date],
+        false_p=False,
+        verified=True,
+        duplicate=False,
+        out_of_scope=False).order_by("date")
 
-    open_findings = Finding.objects.filter(test__engagement__product=eng.product,
-                                           date__range=[start_date, end_date],
-                                           false_p=False,
-                                           verified=True,
-                                           duplicate=False,
-                                           out_of_scope=False,
-                                           active=True,
-                                           mitigated__isnull=True)
+    open_findings = Finding.objects.filter(
+        test__engagement__product=eng.product,
+        date__range=[start_date, end_date],
+        false_p=False,
+        verified=True,
+        duplicate=False,
+        out_of_scope=False,
+        active=True,
+        mitigated__isnull=True)
 
-    closed_findings = Finding.objects.filter(test__engagement__product=eng.product,
-                                             date__range=[start_date, end_date],
-                                             false_p=False,
-                                             verified=True,
-                                             duplicate=False,
-                                             out_of_scope=False,
-                                             mitigated__isnull=False)
+    closed_findings = Finding.objects.filter(
+        test__engagement__product=eng.product,
+        date__range=[start_date, end_date],
+        false_p=False,
+        verified=True,
+        duplicate=False,
+        out_of_scope=False,
+        mitigated__isnull=False)
 
     return render(request, 'dojo/view_eng.html',
                   {'eng': eng, 'tests': tests,
@@ -311,30 +337,34 @@ def view_engagement(request, eid):
 def add_tests(request, eid):
     eng = Engagement.objects.get(id=eid)
     cred_form = CredMappingForm()
-    cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(engagement=eng).order_by('cred_id')
+    cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+        engagement=eng).order_by('cred_id')
 
     if request.method == 'POST':
         form = TestForm(request.POST)
         cred_form = CredMappingForm(request.POST)
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(engagement=eng).order_by('cred_id')
+        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+            engagement=eng).order_by('cred_id')
         if form.is_valid():
             new_test = form.save(commit=False)
             new_test.engagement = eng
-	    try:
-            	new_test.lead = User.objects.get(id=form['lead'].value())
-	    except:
-		new_test.lead = None
-		pass
+            try:
+                new_test.lead = User.objects.get(id=form['lead'].value())
+            except:
+                new_test.lead = None
+                pass
             new_test.save()
             tags = request.POST.getlist('tags')
             t = ", ".join(tags)
             new_test.tags = t
 
-            #Save the credential to the test
+            # Save the credential to the test
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
-                    #Select the credential mapping object from the selected list and only allow if the credential is associated with the product
-                    cred_user = Cred_Mapping.objects.filter(pk=cred_form.cleaned_data['cred_user'].id, engagement=eid).first()
+                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the product
+                    cred_user = Cred_Mapping.objects.filter(
+                        pk=cred_form.cleaned_data['cred_user'].id,
+                        engagement=eid).first()
 
                     new_f = cred_form.save(commit=False)
                     new_f.test = new_test
@@ -346,24 +376,32 @@ def add_tests(request, eid):
                                  'Test added successfully.',
                                  extra_tags='alert-success')
 
-            create_notification(event='test_added', title='Test added', test=new_test, engagement=eng, url=request.build_absolute_uri(reverse('view_engagement', args=(eng.id,))))
+            create_notification(event='test_added', title='Test added',
+                                test=new_test, engagement=eng,
+                                url=request.build_absolute_uri(
+                                    reverse('view_engagement',
+                                            args=(eng.id,))))
 
             if '_Add Another Test' in request.POST:
-                return HttpResponseRedirect(reverse('add_tests', args=(eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('add_tests', args=(eng.id,)))
             elif '_Add Findings' in request.POST:
-                return HttpResponseRedirect(reverse('add_findings', args=(new_test.id,)))
+                return HttpResponseRedirect(
+                    reverse('add_findings', args=(new_test.id,)))
             elif '_Finished' in request.POST:
-                return HttpResponseRedirect(reverse('view_engagement', args=(eng.id,)))
+                return HttpResponseRedirect(
+                    reverse('view_engagement', args=(eng.id,)))
     else:
         form = TestForm()
-	form.initial['target_start'] = eng.target_start
-	form.initial['target_end'] = eng.target_end
-    add_breadcrumb(parent=eng, title="Add Tests", top_level=False, request=request)
+        form.initial['target_start'] = eng.target_start
+        form.initial['target_end'] = eng.target_end
+    add_breadcrumb(parent=eng, title="Add Tests", top_level=False,
+                   request=request)
     return render(request, 'dojo/add_tests.html',
                   {'form': form,
-                  'cred_form': cred_form,
-                  'eid': eid
-                  })
+                   'cred_form': cred_form,
+                   'eid': eid
+                   })
 
 
 @user_passes_test(lambda u: u.is_staff)
@@ -372,12 +410,14 @@ def import_scan_results(request, eid):
     finding_count = 0
     form = ImportScanForm()
     cred_form = CredMappingForm()
-    cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(engagement=engagement).order_by('cred_id')
+    cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+        engagement=engagement).order_by('cred_id')
 
     if request.method == "POST":
         form = ImportScanForm(request.POST, request.FILES)
         cred_form = CredMappingForm(request.POST)
-        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(engagement=engagement).order_by('cred_id')
+        cred_form.fields["cred_user"].queryset = Cred_Mapping.objects.filter(
+            engagement=engagement).order_by('cred_id')
         if form.is_valid():
             file = request.FILES['file']
             scan_date = form.cleaned_data['scan_date']
@@ -386,14 +426,18 @@ def import_scan_results(request, eid):
             verified = form.cleaned_data['verified']
 
             scan_type = request.POST['scan_type']
-            if not any(scan_type in code for code in ImportScanForm.SCAN_TYPE_CHOICES):
+            if not any(scan_type in code for code in
+                       ImportScanForm.SCAN_TYPE_CHOICES):
                 raise Http404()
 
             tt, t_created = Test_Type.objects.get_or_create(name=scan_type)
             # will save in development environment
-            environment, env_created = Development_Environment.objects.get_or_create(name="Development")
-            t = Test(engagement=engagement, test_type=tt, target_start=scan_date,
-                     target_end=scan_date, environment=environment, percent_complete=100)
+            environment, env_created = Development_Environment.objects.get_or_create(
+                name="Development")
+            t = Test(engagement=engagement, test_type=tt,
+                     target_start=scan_date,
+                     target_end=scan_date, environment=environment,
+                     percent_complete=100)
             t.lead = request.user
             t.full_clean()
             t.save()
@@ -401,11 +445,13 @@ def import_scan_results(request, eid):
             ts = ", ".join(tags)
             t.tags = ts
 
-            #Save the credential to the test
+            # Save the credential to the test
             if cred_form.is_valid():
                 if cred_form.cleaned_data['cred_user']:
-                    #Select the credential mapping object from the selected list and only allow if the credential is associated with the product
-                    cred_user = Cred_Mapping.objects.filter(pk=cred_form.cleaned_data['cred_user'].id, engagement=eid).first()
+                    # Select the credential mapping object from the selected list and only allow if the credential is associated with the product
+                    cred_user = Cred_Mapping.objects.filter(
+                        pk=cred_form.cleaned_data['cred_user'].id,
+                        engagement=eid).first()
 
                     new_f = cred_form.save(commit=False)
                     new_f.test = t
@@ -430,7 +476,7 @@ def import_scan_results(request, eid):
 
                     item.test = t
                     if item.date == timezone.now().date():
-                      item.date = t.target_start
+                        item.date = t.target_start
 
                     item.reporter = request.user
                     item.last_reviewed = timezone.now()
@@ -439,11 +485,14 @@ def import_scan_results(request, eid):
                     item.verified = verified
                     item.save(dedupe_option=False)
 
-                    if hasattr(item, 'unsaved_req_resp') and len(item.unsaved_req_resp) > 0:
+                    if hasattr(item, 'unsaved_req_resp') and len(
+                            item.unsaved_req_resp) > 0:
                         for req_resp in item.unsaved_req_resp:
                             burp_rr = BurpRawRequestResponse(finding=item,
-                                                             burpRequestBase64=req_resp["req"],
-                                                             burpResponseBase64=req_resp["resp"],
+                                                             burpRequestBase64=
+                                                             req_resp["req"],
+                                                             burpResponseBase64=
+                                                             req_resp["resp"],
                                                              )
                             burp_rr.clean()
                             burp_rr.save()
@@ -457,12 +506,13 @@ def import_scan_results(request, eid):
                         burp_rr.save()
 
                     for endpoint in item.unsaved_endpoints:
-                        ep, created = Endpoint.objects.get_or_create(protocol=endpoint.protocol,
-                                                                     host=endpoint.host,
-                                                                     path=endpoint.path,
-                                                                     query=endpoint.query,
-                                                                     fragment=endpoint.fragment,
-                                                                     product=t.engagement.product)
+                        ep, created = Endpoint.objects.get_or_create(
+                            protocol=endpoint.protocol,
+                            host=endpoint.host,
+                            path=endpoint.path,
+                            query=endpoint.query,
+                            fragment=endpoint.fragment,
+                            product=t.engagement.product)
 
                         item.endpoints.add(ep)
                     item.save()
@@ -474,11 +524,17 @@ def import_scan_results(request, eid):
 
                 messages.add_message(request,
                                      messages.SUCCESS,
-                                     scan_type + ' processed, a total of ' + message(finding_count, 'finding',
-                                                                                     'processed'),
+                                     scan_type + ' processed, a total of ' + message(
+                                         finding_count, 'finding',
+                                         'processed'),
                                      extra_tags='alert-success')
 
-                create_notification(event='results_added', title='Results added', finding_count=finding_count, test=t, engagement=engagement, url=request.build_absolute_uri(reverse('view_test', args=(t.id,))))
+                create_notification(event='results_added',
+                                    title='Results added',
+                                    finding_count=finding_count, test=t,
+                                    engagement=engagement,
+                                    url=request.build_absolute_uri(
+                                        reverse('view_test', args=(t.id,))))
 
                 return HttpResponseRedirect(reverse('view_test', args=(t.id,)))
             except SyntaxError:
@@ -487,7 +543,8 @@ def import_scan_results(request, eid):
                                      'There appears to be an error in the XML report, please check and try again.',
                                      extra_tags='alert-danger')
 
-    add_breadcrumb(parent=engagement, title="Import Scan Results", top_level=False, request=request)
+    add_breadcrumb(parent=engagement, title="Import Scan Results",
+                   top_level=False, request=request)
     return render(request,
                   'dojo/import_scan_results.html',
                   {'form': form,
@@ -510,7 +567,8 @@ def close_eng(request, eid):
                          messages.SUCCESS,
                          'Engagement closed successfully.',
                          extra_tags='alert-success')
-    return HttpResponseRedirect(reverse('view_product', args=(eng.product.id,)))
+    return HttpResponseRedirect(
+        reverse('view_product', args=(eng.product.id,)))
 
 
 @user_passes_test(lambda u: u.is_staff)
@@ -536,7 +594,8 @@ method to complete checklists from the engagement view
 @user_passes_test(lambda u: u.is_staff)
 def complete_checklist(request, eid):
     eng = get_object_or_404(Engagement, id=eid)
-    add_breadcrumb(parent=eng, title="Complete checklist", top_level=False, request=request)
+    add_breadcrumb(parent=eng, title="Complete checklist", top_level=False,
+                   request=request)
     if request.method == 'POST':
         tests = Test.objects.filter(engagement=eng)
         findings = Finding.objects.filter(test__in=tests).all()
@@ -558,7 +617,8 @@ def complete_checklist(request, eid):
                                  messages.SUCCESS,
                                  'Checklist saved.',
                                  extra_tags='alert-success')
-            return HttpResponseRedirect(reverse('view_engagement', args=(eid,)))
+            return HttpResponseRedirect(
+                reverse('view_engagement', args=(eid,)))
     else:
         tests = Test.objects.filter(engagement=eng)
         findings = Finding.objects.filter(test__in=tests).all()
@@ -614,12 +674,14 @@ def upload_risk(request, eid):
                                  messages.SUCCESS,
                                  'Risk acceptance saved.',
                                  extra_tags='alert-success')
-            return HttpResponseRedirect(reverse('view_engagement', args=(eid,)))
+            return HttpResponseRedirect(
+                reverse('view_engagement', args=(eid,)))
     else:
         form = UploadRiskForm(initial={'reporter': request.user})
 
     form.fields["accepted_findings"].queryset = eng_findings
-    add_breadcrumb(parent=eng, title="Upload Risk Acceptance", top_level=False, request=request)
+    add_breadcrumb(parent=eng, title="Upload Risk Acceptance", top_level=False,
+                   request=request)
     return render(request, 'dojo/up_risk.html',
                   {'eng': eng, 'form': form})
 
@@ -628,7 +690,7 @@ def view_risk(request, eid, raid):
     risk_approval = get_object_or_404(Risk_Acceptance, pk=raid)
     eng = get_object_or_404(Engagement, pk=eid)
     if (request.user.is_staff or
-                request.user in eng.product.authorized_users.all()):
+            request.user in eng.product.authorized_users.all()):
         pass
     else:
         raise PermissionDenied
@@ -704,7 +766,8 @@ def view_risk(request, eid, raid):
                     request,
                     messages.SUCCESS,
                     'Finding%s added successfully.' % ('s'
-                                                       if len(findings) > 1 else ''),
+                                                       if len(
+                        findings) > 1 else ''),
                     extra_tags='alert-success')
 
     note_form = NoteForm()
@@ -776,7 +839,7 @@ def download_risk(request, eid, raid):
     risk_approval = get_object_or_404(Risk_Acceptance, pk=raid)
     en = get_object_or_404(Engagement, pk=eid)
     if (request.user.is_staff
-        or request.user in en.product.authorized_users.all()):
+            or request.user in en.product.authorized_users.all()):
         pass
     else:
         raise PermissionDenied
@@ -802,7 +865,8 @@ under media folder
 @user_passes_test(lambda u: u.is_staff)
 def upload_threatmodel(request, eid):
     eng = Engagement.objects.get(id=eid)
-    add_breadcrumb(parent=eng, title="Upload a threat model", top_level=False, request=request)
+    add_breadcrumb(parent=eng, title="Upload a threat model", top_level=False,
+                   request=request)
 
     if request.method == 'POST':
         form = UploadThreatForm(request.POST, request.FILES)
@@ -815,7 +879,8 @@ def upload_threatmodel(request, eid):
                                  messages.SUCCESS,
                                  'Threat model saved.',
                                  extra_tags='alert-success')
-            return HttpResponseRedirect(reverse('view_engagement', args=(eid,)))
+            return HttpResponseRedirect(
+                reverse('view_engagement', args=(eid,)))
     else:
         form = UploadThreatForm()
     return render(request,
@@ -834,7 +899,8 @@ def view_threatmodel(request, eid):
     mimetype, encoding = mimetypes.guess_type(eng.tmodel_path)
     response = StreamingHttpResponse(FileIterWrapper(open(eng.tmodel_path)))
     fileName, fileExtension = os.path.splitext(eng.tmodel_path)
-    response['Content-Disposition'] = 'attachment; filename=threatmodel' + fileExtension
+    response[
+        'Content-Disposition'] = 'attachment; filename=threatmodel' + fileExtension
     response['Content-Type'] = mimetype
 
     return response
@@ -851,7 +917,8 @@ def engagement_ics(request, eid):
                         "Engagement: %s (%s)" % (eng.name, eng.product.name),
                         "Set aside for engagement %s, on product %s.  Additional detail can be found at %s" % (
                             eng.name, eng.product.name,
-                            request.build_absolute_uri((reverse("view_engagement", args=(eng.id,))))),
+                            request.build_absolute_uri(
+                                (reverse("view_engagement", args=(eng.id,))))),
                         uid)
     output = cal.serialize()
     response = HttpResponse(content=output)

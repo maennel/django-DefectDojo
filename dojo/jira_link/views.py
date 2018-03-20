@@ -1,31 +1,16 @@
 # #  product
-import logging
-import sys
 import json
-import pprint
-from datetime import datetime
-from math import ceil
 
-from dateutil.relativedelta import relativedelta
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
-from django.core.exceptions import PermissionDenied
-from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-
-from dojo.filters import ProductFilter, ProductFindingFilter
-from dojo.forms import ProductForm, EngForm, DeleteProductForm
-from dojo.models import Product_Type, Finding, Product, Engagement, ScanSettings, Risk_Acceptance, JIRA_Conf
-from dojo.utils import get_page_items, add_breadcrumb, get_punchcard_data, get_system_setting
-from dojo.models import *
-from dojo.forms import *
 from jira import JIRA
+
+from dojo.forms import *
 from dojo.tasks import *
-from dojo.product import views as ds
+from dojo.utils import add_breadcrumb
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +69,8 @@ def new_jira(request):
             try:
                 jira_server = jform.cleaned_data.get('url').rstrip('/')
                 jira = JIRA(server=jform.cleaned_data.get('url').rstrip('/'),
-                            basic_auth=(jform.cleaned_data.get('username'), jform.cleaned_data.get('password')))
+                            basic_auth=(jform.cleaned_data.get('username'),
+                                        jform.cleaned_data.get('password')))
                 new_j = jform.save(commit=False)
                 new_j.url = jira_server
                 new_j.save()
@@ -101,9 +87,11 @@ def new_jira(request):
                                      extra_tags='alert-danger')
     else:
         jform = JIRAForm()
-        add_breadcrumb(title="New Jira Configuration", top_level=False, request=request)
+        add_breadcrumb(title="New Jira Configuration", top_level=False,
+                       request=request)
     return render(request, 'dojo/new_jira.html',
                   {'jform': jform})
+
 
 @user_passes_test(lambda u: u.is_staff)
 def edit_jira(request, jid):
@@ -114,7 +102,8 @@ def edit_jira(request, jid):
             try:
                 jira_server = jform.cleaned_data.get('url').rstrip('/')
                 jira = JIRA(server=jira_server,
-                            basic_auth=(jform.cleaned_data.get('username'), jform.cleaned_data.get('password')))
+                            basic_auth=(jform.cleaned_data.get('username'),
+                                        jform.cleaned_data.get('password')))
 
                 new_j = jform.save(commit=False)
                 new_j.url = jira_server
@@ -131,7 +120,8 @@ def edit_jira(request, jid):
                                      extra_tags='alert-danger')
     else:
         jform = JIRAForm(instance=jira)
-    add_breadcrumb(title="Edit JIRA Configuration", top_level=False, request=request)
+    add_breadcrumb(title="Edit JIRA Configuration", top_level=False,
+                   request=request)
 
     return render(request,
                   'dojo/edit_jira.html',
@@ -139,27 +129,32 @@ def edit_jira(request, jid):
                       'jform': jform,
                   })
 
+
 @user_passes_test(lambda u: u.is_staff)
 def delete_issue(request, find):
     j_issue = JIRA_Issue.objects.get(finding=find)
-    jira = JIRA(server=jira_conf.url, basic_auth=(jira_conf.username, jira_conf.password))
+    jira = JIRA(server=jira_conf.url,
+                basic_auth=(jira_conf.username, jira_conf.password))
     issue = jira.issue(j_issue.jira_id)
     issue.delete()
+
 
 @user_passes_test(lambda u: u.is_staff)
 def jira(request):
     confs = JIRA_Conf.objects.all()
-    add_breadcrumb(title="JIRA List", top_level=not len(request.GET), request=request)
+    add_breadcrumb(title="JIRA List", top_level=not len(request.GET),
+                   request=request)
     return render(request,
                   'dojo/jira.html',
                   {'confs': confs,
                    })
 
+
 @user_passes_test(lambda u: u.is_staff)
 def delete_jira(request, tid):
     inst = get_object_or_404(JIRA_Conf, pk=tid)
-    #eng = test.engagement
-    #TODO Make Form
+    # eng = test.engagement
+    # TODO Make Form
     form = DeleteJIRAConfForm(instance=inst)
 
     from django.contrib.admin.utils import NestedObjects
@@ -180,11 +175,10 @@ def delete_jira(request, tid):
                                      extra_tags='alert-success')
                 return HttpResponseRedirect(reverse('jira'))
 
-    add_breadcrumb( title="Delete", top_level=False, request=request)
+    add_breadcrumb(title="Delete", top_level=False, request=request)
     return render(request, 'dojo/delete_jira.html',
                   {'inst': inst,
                    'form': form,
                    'rels': rels,
                    'deletable_objects': rels,
                    })
-

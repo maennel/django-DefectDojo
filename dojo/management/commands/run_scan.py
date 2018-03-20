@@ -1,4 +1,9 @@
-import Queue
+from six import PY2, PY3
+
+if PY2:
+    import Queue
+if PY3:
+    import queue as Queue
 from datetime import datetime
 import sys
 import threading
