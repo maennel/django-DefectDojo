@@ -1,4 +1,4 @@
-import StringIO
+
 import csv
 import hashlib
 from dojo.models import Finding, Endpoint
@@ -7,8 +7,10 @@ import re
 from six import PY2, PY3
 
 if PY2:
+    import StringIO
     from urlparse import urlparse
 if PY3:
+    from io import StringIO
     from urllib.parse import urlparse
 import socket
 

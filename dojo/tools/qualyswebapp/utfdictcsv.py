@@ -6,7 +6,14 @@
 #-*- coding:utf-8 -*-
 
 import codecs
-import cStringIO
+
+from six import PY2, PY3
+
+if PY2:
+    import cStringIO
+if PY3:
+    from io import BytesIO as cStringIO
+
 import csv
 
 ################################################################

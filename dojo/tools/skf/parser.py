@@ -1,8 +1,12 @@
-import StringIO
+from six import PY2, PY3
+
+if PY2:
+    import StringIO
+if PY3:
+    from io import StringIO
 import csv
 import hashlib
 from dojo.models import Finding, Notes
-from dateutil.parser import parse
 from django.contrib.auth.models import User
 from datetime import datetime
 

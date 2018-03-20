@@ -1,4 +1,9 @@
-import StringIO
+from six import PY2, PY3
+
+if PY2:
+    import StringIO
+if PY3:
+    from io import StringIO
 import csv
 import hashlib
 from defusedxml import ElementTree

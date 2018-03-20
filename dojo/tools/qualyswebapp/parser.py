@@ -4,6 +4,9 @@
 
 import argparse
 import csv
+
+import logging
+
 from dojo.models import Finding, Endpoint
 
 from six import PY2, PY3
@@ -13,6 +16,8 @@ if PY2:
 if PY3:
     from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
 ################################################################
 
 # Non-standard libraries
@@ -20,21 +25,21 @@ try:
     import defusedxml.lxml as lxml
     from lxml import etree
 except ImportError:
-    print("Missing lxml library. Please install using PIP. https://pypi.python.org/pypi/lxml/3.4.2")
-    exit()
+    logger.error("Missing lxml library. Please install using PIP. https://pypi.python.org/pypi/lxml/3.4.2")
+    raise
 
 try:
     import html2text
 except ImportError:
-    print("Missing html2text library. Please install using PIP. https://pypi.python.org/pypi/html2text/2015.2.18")
-    exit()
+    logger.error("Missing html2text library. Please install using PIP. https://pypi.python.org/pypi/html2text/2015.2.18")
+    raise
 
 # Custom libraries
 try:
-    import utfdictcsv
+    import dojo.tools.qualyswebapp.utfdictcsv
 except ImportError:
-    print("Missing dict to csv converter custom library. utfdictcsv.py should be in the same path as this file.")
-    exit()
+    logger.error("Missing dict to csv converter custom library. utfdictcsv.py should be in the same path as this file.")
+    raise
 
 ################################################################
 

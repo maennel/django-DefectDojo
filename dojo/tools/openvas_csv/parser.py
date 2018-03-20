@@ -1,14 +1,17 @@
 # Sorry for the lazyness but I just update the column name fields
 # Didn't change the class names, only the main one..
 
-import StringIO
+from six import PY2, PY3
+
+if PY2:
+    import StringIO
+if PY3:
+    from io import StringIO
 import csv
 import hashlib
 from dojo.models import Finding, Endpoint
 from dateutil.parser import parse
 import re
-
-from six import PY2, PY3
 
 if PY2:
     from urlparse import urlparse
