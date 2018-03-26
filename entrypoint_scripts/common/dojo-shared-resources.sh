@@ -171,8 +171,8 @@ function setupdojo() {
     echo "=============================================================================="
     echo
     #Copying setting.py temporarily so that collect static will run correctly
-    cp $DOJO_ROOT_DIR/dojo/settings/settings.dist.py $DOJO_ROOT_DIR/dojo/settings/settings.py
-    sed -i "s#DOJO_STATIC_ROOT#$PWD/static/#g" $DOJO_ROOT_DIR/dojo/settings/settings.py
+    cp dojo/settings/settings.dist.py dojo/settings/settings.py
+    sed -i'' "s#DOJO_STATIC_ROOT#$PWD/static/#g" dojo/settings/settings.py
 
     echo "Setting dojo settings for SQLLITEDB."
     SQLLITEDB="'NAME': os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'db.sqlite3')"
@@ -380,26 +380,42 @@ function prepare_settings_file() {
     fi
 
     SECRET=`cat /dev/urandom | LC_CTYPE=C tr -dc "a-zA-Z0-9" | head -c 128`
+    TARGET_SETTINGS_FILE=dojo/settings/settings.py
 
     # Save MySQL details in settings file
-    cp dojo/settings/settings.dist.py dojo/settings/settings.py
-    sed -i "s/MYSQLHOST/$SQLHOST/g" dojo/settings/settings.py
-    sed -i "s/MYSQLPORT/$SQLPORT/g" dojo/settings/settings.py
-    sed -i "s/MYSQLUSER/$SQLUSER/g" dojo/settings/settings.py
-    sed -i "s/MYSQLPWD/$SQLPWD/g" dojo/settings/settings.py
-    sed -i "s/MYSQLDB/$DBNAME/g" dojo/settings/settings.py
-    sed -i "s#DOJODIR#$PWD/dojo#g" dojo/settings/settings.py
-    sed -i "s/DOJOSECRET/$SECRET/g" dojo/settings/settings.py
-    sed -i "s#DOJO_MEDIA_ROOT#$PWD/media/#g" dojo/settings/settings.py
-    sed -i "s#DOJO_STATIC_ROOT#$PWD/static/#g" dojo/settings/settings.py
+    cp dojo/settings/settings.dist.py $TARGET_SETTINGS_FILE
+
+    SED_SCRIPTS="s/MYSQLHOST/$SQLHOST/g" \
+                "s/MYSQLPORT/$SQLPORT/g" \
+                "s/MYSQLUSER/$SQLUSER/g" \
+                "s/MYSQLPWD/$SQLPWD/g" \
+                "s/MYSQLDB/$DBNAME/g" \
+                "s#DOJODIR#$PWD/dojo#g" \
+                "s/DOJOSECRET/$SECRET/g" \
+                "s#DOJO_MEDIA_ROOT#$PWD/media/#g" \
+                "s#DOJO_STATIC_ROOT#$PWD/static/#g"
 
     if [ "$DBTYPE" == "$SQLITE" ]; then
-        sed -i "s/BACKENDDB/django.db.backends.sqlite3/g" dojo/settings/settings.py
-        sed -i "s/MYSQLDB/db.sqlite3/g" dojo/settings/settings.py
+        SED_SCRIPTS=$SED_SCRIPTS "s/BACKENDDB/django.db.backends.sqlite3/g" \
+                                 "s/MYSQLDB/db.sqlite3/g"
     elif [ "$DBTYPE" == "$MYSQL" ]; then
-        sed -i "s/BACKENDDB/django.db.backends.mysql/g" dojo/settings/settings.py
+        SED_SCRIPTS=$SED_SCRIPTS "s/BACKENDDB/django.db.backends.mysql/g"
     elif [ "$DBTYPE" == "$POSTGRES" ]; then
-        sed -i "s/BACKENDDB/django.db.backends.postgresql_psycopg2/g" dojo/settings/settings.py
+        SED_SCRIPTS=$SED_SCRIPTS "s/BACKENDDB/django.db.backends.postgresql_psycopg2/g"
+    fi
+
+    # Test whether we're running on a "brew"-system, like Mac OS X; then use
+    # BSD-style sed;
+    # By default, use GNU-style sed
+    BREW_CMD=$(which brew)
+    if [[ ! -z $BREW_CMD ]]; then
+        for sed_script in $SED_SCRIPTS; do
+            sed -i '' -e $sed_script $TARGET_SETTINGS_FILE
+        done
+    else
+        for sed_script in $SED_SCRIPTS; do
+            sed -i -e $sed_script $TARGET_SETTINGS_FILE
+        done
     fi
 }
 
