@@ -258,8 +258,11 @@ def action_log_entry(value, autoescape=None):
 
 @register.simple_tag(takes_context=True)
 def dojo_body_class(context):
-    request = context['request']
-    return request.COOKIES.get('dojo-sidebar', 'min')
+    sidebar_class = 'min'
+    request = context.get('request')
+    if request:
+        sidebar_class = request.COOKIES.get('dojo-sidebar', 'min')
+    return sidebar_class
 
 
 @register.simple_tag
