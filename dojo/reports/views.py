@@ -564,7 +564,6 @@ def generate_report(request, obj):
     include_executive_summary = int(request.GET.get('include_executive_summary', 0))
     include_table_of_contents = int(request.GET.get('include_table_of_contents', 0))
     generate = "_generate" in request.GET
-    report_name = str(obj)
     report_type = type(obj).__name__
     add_breadcrumb(title="Generate Report", top_level=False, request=request)
     if type(obj).__name__ == "Product_Type":
