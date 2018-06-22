@@ -60,9 +60,8 @@ def add_alerts(self, runinterval):
                             url=reverse('view_engagement', args=(eng.id,)),
                             recipients=[eng.lead])
 
-    @app.task(bind=True)
 
-
+@app.task(bind=True)
 def async_pdf_report(self,
                      report=None,
                      template="None",
