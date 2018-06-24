@@ -1,12 +1,12 @@
+import json
 from datetime import datetime
 
 from django.test import TestCase
-from pandas._libs import json
 
 from dojo.models import Finding, Dojo_User, Product_Type, Product, Engagement, \
     Test, Test_Type, System_Settings
-from dojo_report.utils import JsonReportRenderer, AsciiReportRenderer, \
-    ProductTypeReportCreator
+from dojo_report.creators import ProductTypeReportCreator
+from dojo_report.renderers import JsonReportRenderer, AsciiReportRenderer
 
 
 class ReportRenderingTests(TestCase):
@@ -77,9 +77,10 @@ class ReportCreationTests(TestCase):
                                    reporter=self.reporter),
         ]
 
-        self.report_creation_user = Dojo_User.objects.create_user(username='abc',
-                                                      first_name='foo',
-                                                      last_name='bar')
+        self.report_creation_user = Dojo_User.objects.create_user(
+            username='abc',
+            first_name='foo',
+            last_name='bar')
 
     def test_create_product_type_report(self):
         # Initialize report creation
