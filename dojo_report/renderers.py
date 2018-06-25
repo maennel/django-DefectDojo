@@ -1,6 +1,8 @@
 import json
 import logging
+import mimetypes
 
+from django.http import HttpResponse
 from django.template.loader import get_template
 
 from dojo.models import Report
@@ -46,6 +48,8 @@ class ReportRenderer(object):
     ]
     report_type = None
     template = None
+    content_type = 'text/html'
+    """content_type produced by the renderer"""
 
     _queryset = None
     _context = None
@@ -72,6 +76,11 @@ class ReportRenderer(object):
                 "No template defined while rendering report")
 
     def perform_rendering(self, context):
+        """
+
+        :param context:
+        :return: a HttpResponse instance
+        """
         template = get_template(self.template)
         return template.render(context)
 
@@ -79,11 +88,12 @@ class ReportRenderer(object):
         self.prepare_rendering()
         context = self._context
         context.update(context_update)
-        return self.perform_rendering(context_update)
+        return HttpResponse(self.perform_rendering(context_update), self.content_type)
 
 
 class PdfReportRenderer(ReportRenderer):
     filename = None
+    content_type = 'text/plain'
 
     def __init__(self, queryset, report_type, *args, **kwargs):
         super(PdfReportRenderer, self).__init__(queryset, report_type, *args,
@@ -122,6 +132,8 @@ class AsciiReportRenderer(ReportRenderer):
 
 
 class JsonReportRenderer(ReportRenderer):
+    content_type = 'application/json'
+
     def prepare_rendering(self):
         """
         Monkey-patching the parent method, since no template is required for

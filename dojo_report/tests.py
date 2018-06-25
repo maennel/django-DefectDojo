@@ -1,3 +1,4 @@
+import httplib
 import json
 from datetime import datetime
 
@@ -52,9 +53,7 @@ class ReportRenderingTests(TestCase):
         self.assertTrue(async_result)
 
 
-class ReportCreationTests(TestCase):
-    default_format = 'application/json'
-
+class AbstractSimpleReportContextTestCase(TestCase):
     def setUp(self):
         # We need a System_Settings object to be present
         System_Settings.objects.create()
@@ -85,11 +84,11 @@ class ReportCreationTests(TestCase):
             Finding.objects.create(title='Voodoo magic happened',
                                    date=datetime.now(), cwe=123,
                                    severity='High', test=self.test,
-                                   reporter=self.reporter,),
+                                   reporter=self.reporter, ),
             Finding.objects.create(title='No one is around',
                                    date=datetime.now(), cwe=124,
                                    severity='High', test=self.test,
-                                   reporter=self.reporter,),
+                                   reporter=self.reporter, ),
         ]
         for f in self.findings:
             f.endpoints.set([self.endpoint])
@@ -103,13 +102,17 @@ class ReportCreationTests(TestCase):
         # test findings
         self.prod.authorized_users.add(self.report_creation_user)
 
+
+class ReportCreationTests(AbstractSimpleReportContextTestCase):
+    default_format = 'application/json'
+
     def test_create_product_type_report(self):
         # Initialize report creation
         creator = ProductTypeReportCreator(user=self.report_creation_user,
                                            host='host.local',
                                            parameters={})
         creator.populate(self.prod_type)
-        json_rendered_report = creator.render(format='application/json')
+        json_rendered_report = creator.render(format='application/json').content
 
         # Verify everything went well
         self.assertTrue(json_rendered_report)
@@ -130,7 +133,7 @@ class ReportCreationTests(TestCase):
                                        host='host.local',
                                        parameters={})
         creator.populate(self.prod)
-        json_rendered_report = creator.render()
+        json_rendered_report = creator.render().content
         self.assertTrue(json_rendered_report)
         report = json.loads(json_rendered_report)
         self.assertEqual(2, len(report['findings']))
@@ -139,7 +142,7 @@ class ReportCreationTests(TestCase):
         creator = EngagementReportCreator(user=self.report_creation_user,
                                           host='host.local')
         creator.populate(self.engagement)
-        json_rendered_report = creator.render()
+        json_rendered_report = creator.render().content
         self.assertTrue(json_rendered_report)
         report = json.loads(json_rendered_report)
         self.assertEqual(2, len(report['findings']))
@@ -148,7 +151,7 @@ class ReportCreationTests(TestCase):
         creator = TestReportCreator(user=self.report_creation_user,
                                     host='host.local')
         creator.populate(self.test)
-        json_rendered_report = creator.render()
+        json_rendered_report = creator.render().content
         self.assertTrue(json_rendered_report)
         report = json.loads(json_rendered_report)
         self.assertEqual(2, len(report['findings']))
@@ -157,7 +160,7 @@ class ReportCreationTests(TestCase):
         creator = EndpointReportCreator(user=self.report_creation_user,
                                         host='host.local')
         creator.populate(self.endpoint)
-        json_rendered_report = creator.render()
+        json_rendered_report = creator.render().content
         self.assertTrue(json_rendered_report)
         report = json.loads(json_rendered_report)
         self.assertEqual(2, len(report['findings']))
@@ -166,7 +169,29 @@ class ReportCreationTests(TestCase):
         creator = FindingReportCreator(user=self.report_creation_user,
                                        host='host.local')
         creator.populate(Finding.objects.all())
-        json_rendered_report = creator.render()
+        json_rendered_report = creator.render().content
         self.assertTrue(json_rendered_report)
         report = json.loads(json_rendered_report)
         self.assertEqual(2, len(report['findings']))
+
+
+class ReportCreationRequestTests(AbstractSimpleReportContextTestCase):
+    def test_request_product_type_report(self):
+        # To generate a product_type report, user must be staff
+        user = Dojo_User.objects.create_user(username='staff-user', is_staff=True)
+        self.client.force_login(user)
+
+        # First, navigate to an intermediary filtering view, allowing the
+        # user to filter for relevant findings
+        r = self.client.get('/product/type/{prod_type_id}/report'.format(
+            prod_type_id=self.prod_type.id))
+        self.assertEqual(httplib.OK, r.status_code)
+        for f in self.findings:
+            self.assertIn(f.title, r.content)
+
+        # Continue to generate the actual report
+        r = self.client.get('/product/type/{prod_type_id}/report'.format(
+            prod_type_id=self.prod_type.id), {'_generate': 1,
+                                              'report_type': 'AsciiDoc'})
+        self.assertEqual(httplib.OK, r.status_code)
+
