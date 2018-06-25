@@ -85,12 +85,14 @@ class ReportCreationTests(TestCase):
             Finding.objects.create(title='Voodoo magic happened',
                                    date=datetime.now(), cwe=123,
                                    severity='High', test=self.test,
-                                   reporter=self.reporter),
+                                   reporter=self.reporter,),
             Finding.objects.create(title='No one is around',
                                    date=datetime.now(), cwe=124,
                                    severity='High', test=self.test,
-                                   reporter=self.reporter),
+                                   reporter=self.reporter,),
         ]
+        for f in self.findings:
+            f.endpoints.set([self.endpoint])
 
         self.report_creation_user = Dojo_User.objects.create_user(
             username='abc',
