@@ -1241,7 +1241,7 @@ class Report(models.Model):
     type = models.CharField(max_length=100, default='Finding')
     format = models.CharField(max_length=15, default='AsciiDoc')
     requester = models.ForeignKey(User)
-    task_id = models.CharField(max_length=50)
+    task_id = models.CharField(max_length=50, null=True, blank=True)
     file = models.FileField(upload_to='reports/%Y/%m/%d',
                             verbose_name='Report File', null=True)
     status = models.CharField(max_length=10, default='requested')
