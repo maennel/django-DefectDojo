@@ -3,7 +3,7 @@ import logging
 
 from django.template.loader import get_template
 
-from dojo.models import Report, Dojo_User
+from dojo.models import Report
 from dojo.tasks import async_pdf_report
 from dojo_report.utils import convert_to_native_type
 
@@ -86,7 +86,8 @@ class PdfReportRenderer(ReportRenderer):
     filename = None
 
     def __init__(self, queryset, report_type, *args, **kwargs):
-        super(PdfReportRenderer, self).__init__(queryset, report_type, *args, **kwargs)
+        super(PdfReportRenderer, self).__init__(queryset, report_type, *args,
+                                                **kwargs)
         self.template = '{report_type}_pdf_report.html'.format(
             report_type=self.report_type)
         self.filename = '{report_type}_report.pdf'.format(
@@ -114,7 +115,6 @@ class PdfReportRenderer(ReportRenderer):
         # messages.success(request, 'Your report is building', extra_tags='alert-success')
         # return HttpResponseRedirect(reverse('reports'))
         return async_result
-
 
 
 class AsciiReportRenderer(ReportRenderer):
