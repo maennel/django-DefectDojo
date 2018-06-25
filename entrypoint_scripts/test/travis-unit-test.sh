@@ -16,7 +16,7 @@ export DJANGO_SETTINGS_MODULE=dojo.settings.unittest
 
 python manage.py makemigrations dojo
 python manage.py migrate
-python manage.py test dojo.unittests
+python manage.py test dojo.unittests dojo_report
 
 deactivate
 
