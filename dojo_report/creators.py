@@ -1,4 +1,5 @@
 import logging
+from collections import namedtuple
 from datetime import datetime
 
 from dateutil import relativedelta
@@ -6,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.conf import settings
 from django.utils import timezone
 
-from dojo.filters import ReportFindingFilter
+from dojo.filters import ReportFindingFilter, ReportAuthedFindingFilter
 from dojo.models import Product_Type, Product, Engagement, Test, Endpoint, \
     Finding
 from dojo.utils import get_period_counts_legacy
@@ -14,6 +15,11 @@ from dojo_report.renderers import JsonReportRenderer, PdfReportRenderer, \
     AsciiReportRenderer
 
 logger = logging.getLogger(__name__)
+
+IncludeFlags = namedtuple('IncludeFlags', ['finding_notes',
+                                           'finding_images',
+                                           'executive_summary',
+                                           'table_of_contents'])
 
 
 class GenericReportCreator(object):
@@ -27,6 +33,7 @@ class GenericReportCreator(object):
     report_type_class = None
     report_filter = None
     base_context = None
+    include_flags = None
     _queryset = None
     _root_nodes = []
 
@@ -70,20 +77,38 @@ class GenericReportCreator(object):
         self.base_context.update({
             'host': self.host,
             'title': self.report_title,
+            'subtitle': self.report_subtitle,
+            'report_name': self.report_name,
             'user': self.user,
             'team_name': settings.TEAM_NAME,
             'parameters': self.parameters,
+
+            # Inclusion flags
+            'include_finding_notes': self.include_flags.finding_notes,
+            'include_finding_images': self.include_flags.finding_images,
+            'include_executive_summary': self.include_flags.executive_summary,
+            'include_table_of_contents': self.include_flags.table_of_contents,
         })
 
-    def populate(self, **root_filter_criteria):
+    def populate(self, *objs, **context_kwargs):
         """
         Populate the creator object by applying filter criteria to identify
         the report's root node(s) from which Finding objects will be looked up
-        :param dict root_filter_criteria:
+        :param list objs:
+        :param dict context_kwargs:
         """
+        self.include_flags = IncludeFlags(
+            finding_notes=context_kwargs.pop('include_finding_notes', False),
+            finding_images=context_kwargs.pop('include_finding_images', False),
+            executive_summary=context_kwargs.pop('include_executive_summary',
+                                                 False),
+            table_of_contents=context_kwargs.pop('include_table_of_contents',
+                                                 False))
+
         # TODO: model dependent authorization
         self._queryset = self.report_type_class.objects.filter(
-            **root_filter_criteria)
+            **context_kwargs)
+        self.add_authorizing_filter(self.user)
         self._root_nodes = self._queryset.all()
         self.populate_base_context()
 
@@ -91,27 +116,20 @@ class GenericReportCreator(object):
         pass
 
     def render(self, format='application/json', ):
-        renderer = self._renderer_map[format](self._queryset)
+        report_type = self.report_type_class.__name__.lower()
+        renderer_class = self._renderer_map[format]
+        renderer = renderer_class(self._queryset, report_type)
         return renderer.render(self.base_context)
 
 
 class ProductTypeReportCreator(GenericReportCreator):
     report_type_class = Product_Type
 
-    def populate(self, product_type, incl_finding_notes=False,
-                 incl_finding_images=False, incl_executive_summary=False,
-                 incl_table_of_contents=False, **root_filter_criteria):
-        super(ProductTypeReportCreator, self).populate(**root_filter_criteria)
+    def populate(self, product_type, **context_kwargs):
+        super(ProductTypeReportCreator, self).populate(**context_kwargs)
 
-        self.base_context.update({
-            'include_finding_notes': incl_finding_notes,
-            'include_finding_images': incl_finding_images,
-            'include_executive_summary': incl_executive_summary,
-            'include_table_of_contents': incl_table_of_contents,
-        })
-
-        # root_filter_criteria was request.GET
-        findings = ReportFindingFilter(root_filter_criteria,
+        # context_kwargs was request.GET
+        findings = ReportFindingFilter(context_kwargs,
                                        queryset=Finding.objects.filter(
                                            test__engagement__product__prod_type=product_type).distinct().prefetch_related(
                                            'test',
@@ -152,29 +170,128 @@ class ProductTypeReportCreator(GenericReportCreator):
             'products': products,
             'engagements': engagements,
             'tests': tests,
-            'report_name': self.report_name,
+            'findings': findings.qs,
+
             'endpoint_opened_per_month': opened_per_period,
             'endpoint_active_findings': findings.qs,
-            'findings': findings.qs,
         })
 
 
 class ProductReportCreator(GenericReportCreator):
+    report_type_class = Product
+
     def add_authorizing_filter(self, user):
         self._queryset = self._queryset.filter(authorized_users=user)
 
+    def populate(self, product, **context_kwargs):
+        super(ProductReportCreator, self).populate(**context_kwargs)
+
+        findings = ReportFindingFilter(context_kwargs,
+                                       queryset=Finding.objects.filter(
+                                           test__engagement__product=product).distinct().prefetch_related(
+                                           'test',
+                                           'test__engagement__product',
+                                           'test__engagement__product__prod_type'))
+        engagements = Engagement.objects.filter(
+            test__finding__in=findings.qs).distinct()
+        tests = Test.objects.filter(finding__in=findings.qs).distinct()
+        self.base_context.update({
+            'product': product,
+            'engagements': engagements,
+            'tests': tests,
+            'findings': findings.qs,
+        })
+
 
 class EngagementReportCreator(GenericReportCreator):
-    pass
+    report_type_class = Engagement
+
+    def populate(self, engagement, **context_kwargs):
+        super(EngagementReportCreator, self).populate(**context_kwargs)
+        findings = ReportFindingFilter(context_kwargs,
+                                       queryset=Finding.objects.filter(
+                                           test__engagement=engagement,
+                                       ).prefetch_related('test',
+                                                          'test__engagement__product',
+                                                          'test__engagement__product__prod_type').distinct())
+        tests = Test.objects.filter(finding__in=findings.qs).distinct()
+        self.base_context.update({
+            'engagement': engagement,
+            'tests': tests,
+            'findings': findings.qs,
+        })
 
 
 class TestReportCreator(GenericReportCreator):
-    pass
+    report_type_class = Test
+    test_instance = None
+
+    def populate(self, test, **context_kwargs):
+        self.test_instance = test
+        super(TestReportCreator, self).populate(**context_kwargs)
+        findings = ReportFindingFilter(context_kwargs,
+                                       queryset=Finding.objects.filter(
+                                           test=test).prefetch_related('test',
+                                                                       'test__engagement__product',
+                                                                       'test__engagement__product__prod_type').distinct())
+        self.base_context.update({
+            'test': test,
+            'findings': findings.qs,
+        })
+
+    @property
+    def report_subtitle(self):
+        return str(self.test_instance)
 
 
 class EndpointReportCreator(GenericReportCreator):
+    report_type_class = Endpoint
+    endpoint_instance = None
+
     def add_authorizing_filter(self, user):
         self._queryset = self._queryset.filter(product__authorized_users=user)
+
+    def populate(self, endpoint, **context_kwargs):
+        self.endpoint_instance = endpoint
+        super(EndpointReportCreator, self).populate(**context_kwargs)
+        host = endpoint.host_no_port
+        endpoints = Endpoint.objects.filter(host__regex="^" + host + ":?",
+                                            product=endpoint.product).distinct()
+        findings = ReportFindingFilter(context_kwargs,
+                                       queryset=Finding.objects.filter(
+                                           endpoints__in=endpoints,
+                                       ).prefetch_related('test',
+                                                          'test__engagement__product',
+                                                          'test__engagement__product__prod_type').distinct())
+        self.base_context.update({
+            'endpoint': endpoint,
+            'endpoints': endpoints,
+            'findings': findings.qs,
+        })
+
+    @property
+    def report_subtitle(self):
+        return self.endpoint_instance.host_no_port
+
+
+class FindingReportCreator(GenericReportCreator):
+    report_type_class = Finding
+
+    def populate(self, finding_qs, **context_kwargs):
+        super(FindingReportCreator, self).populate(**context_kwargs)
+        findings = ReportAuthedFindingFilter(context_kwargs,
+                                             queryset=finding_qs.prefetch_related(
+                                                 'test',
+                                                 'test__engagement__product',
+                                                 'test__engagement__product__prod_type').distinct(),
+                                             user=self.user)
+        self.base_context.update({
+            'findings': findings.qs,
+        })
+
+    @property
+    def report_subtitle(self):
+        return ""
 
 
 _report_creator_map = {
@@ -183,8 +300,16 @@ _report_creator_map = {
     Engagement: EngagementReportCreator,
     Test: TestReportCreator,
     Endpoint: EndpointReportCreator,
+    Finding: FindingReportCreator,
 }
 
 
 def get_report_creator_class(model_class):
+    """
+    Returns a ReportCreator class.
+    Raises a KeyError if not found.
+
+    :param model_class:
+    :return:
+    """
     return _report_creator_map[model_class]
